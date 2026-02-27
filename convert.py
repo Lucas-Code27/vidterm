@@ -3,6 +3,8 @@ from pathlib import Path
 from tqdm import tqdm
 import json
 
+import vid2img
+
 quantization_level = 1
 
 try:
@@ -15,16 +17,25 @@ except Exception as e:
 
     quantization_level = 1
 
-json.load
 
 frames_folder = "frames/"
 output_folder = "output/"
 
-filenames = [Path(f) for f in Path(frames_folder).glob("*.png")]
+# Todo: Figure out how to get arguments working
+#print("Converting Video into Images")
+#
+#video_filenames = [Path(f) for f in Path(frames_folder).glob("*.mp4")]
+#
+#if not vid2img.convert_video_to_images("video/video.mp4"):
+#    print("Failed to convert video to images")
+#else:
+#    print("Converted Video to Images!")
+
+frame_filenames = [Path(f) for f in Path(frames_folder).glob("*.png")]
 
 print("CONVERTING TO TEXT FILES")
 
-for image_path in tqdm(filenames, "Converting"):
+for image_path in tqdm(frame_filenames, "Converting"):
     picture = Image.open(image_path)
 
     picture = picture.convert("L")
