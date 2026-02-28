@@ -1,0 +1,1 @@
+to make a new config just make a copy of the default config and name it "config.json"
