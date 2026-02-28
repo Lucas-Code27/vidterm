@@ -15,8 +15,11 @@ def convert_video_to_images(path):
             return False
 
         count += 1
-        cv2.imwrite(output_folder + f"frame_{count}.png", frame)
+        cv2.imwrite(output_folder + f"frame_{count:08d}.png", frame)
 
     cap.release()
     cv2.destroyAllWindows()
     return True
+
+if __name__ ==  "__main__":
+    convert_video_to_images("video/video.mp4")
