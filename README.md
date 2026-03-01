@@ -4,6 +4,7 @@
 ## Features
 - One file to handle everything
 - Multi-Threaded buffering and rendering
+- Supports any video format that OpenCV2 supports
 - Color
 
 ## Planned Features
