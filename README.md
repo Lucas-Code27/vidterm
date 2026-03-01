@@ -12,6 +12,5 @@
 - Audio
 
 ## Dependencies
-- pillow
 - opencv-python
 - termcolor
