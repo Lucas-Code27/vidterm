@@ -1,83 +1,82 @@
+import logging
 from PIL import Image
 from pathlib import Path
 from tqdm import tqdm
 import termcolor
 import json
+import io
 
 import vid2img
+import watch
 
-quantization_level = 1
+def main():
+    quantization_level = 8
 
-try:
-    with open('config/config.json', 'r') as f:
-        data = json.load(f)
+    try:
+        with open('config/config.json', 'r') as f:
+            data = json.load(f)
 
-        quantization_level = data["quantization-level"]
-except Exception as e:
-    print(f"Config loading had an error! {e}")
+            quantization_level = data["quantization-level"]
+    except Exception as e:
+        print(f"Config loading had an error! {e}")
 
-    quantization_level = 1
+        quantization_level = 8
 
+    FRAME_COUNT = -1
 
-frames_folder = "frames/"
-output_folder = "output/"
+    image_frames = vid2img.convert_video_to_images("video/video.mp4", FRAME_COUNT)
+    text_frames = []
 
-# Todo: Figure out how to get arguments working
-#print("Converting Video into Images")
-#
-#video_filenames = [Path(f) for f in Path(frames_folder).glob("*.mp4")]
-#
-#if not vid2img.convert_video_to_images("video/video.mp4"):
-#    print("Failed to convert video to images")
-#else:
-#    print("Converted Video to Images!")
+    print("CONVERTING TO TEXT FILES")
 
-frame_filenames = [Path(f) for f in Path(frames_folder).glob("*.png")]
+    for image in tqdm(image_frames, "Converting"):
+        frame = image.tobytes()
+        frame_buffer = io.BytesIO(frame)
 
-print("CONVERTING TO TEXT FILES")
+        picture = Image.open(frame_buffer)
+        gs_picture = picture
 
-for image_path in tqdm(frame_filenames, "Converting"):
-    picture = Image.open(image_path)
-    gs_picture = picture
+        picture = picture.convert("RGB")
+        gs_picture = gs_picture.convert("L")
 
-    picture = picture.convert("RGB")
-    gs_picture = gs_picture.convert("L")
+        width, height = picture.size
 
-    width, height = picture.size
+        # Load the pixel data for efficient access
+        pixels = picture.load()
+        lum_pixels = gs_picture.load()
 
-    # Load the pixel data for efficient access
-    pixels = picture.load()
-    lum_pixels = gs_picture.load()
+        image_text_data = ""
 
-    image_text_data = []
+        # Loop over all pixels
+        for y in range(height):
+            if y % (quantization_level * 2) != 0: continue
+            line = ""
 
-    # Loop over all pixels
-    for y in range(height):
-        if y % (quantization_level * 2) != 0: continue
-        line = ""
+            for x in range(width):
+                if (quantization_level > 1):
+                    if x % quantization_level != 0: continue
 
-        for x in range(width):
-            if (quantization_level > 1):
-                if x % quantization_level != 0: continue
+                red, green, blue = pixels[x, y]
+                value = lum_pixels[x, y]
+                color = (red, green, blue)
 
-            red, green, blue = pixels[x, y]
-            value = lum_pixels[x, y]
-            color = (red, green, blue)
+                if value > 180:
+                    line += termcolor.colored('█', color)
+                elif value > 128:
+                    line += termcolor.colored('▓', color)
+                elif value > 64:
+                    line += termcolor.colored('▒', color)
+                elif value > 32:
+                    line += termcolor.colored('░', color)
+                else:
+                    line += ' '
+            image_text_data += line + "\n"
+        text_frames.append(image_text_data)
 
-            if value > 180:
-                line += termcolor.colored('█', color)
-            elif value > 128:
-                line += termcolor.colored('▓', color)
-            elif value > 64:
-                line += termcolor.colored('▒', color)
-            elif value > 32:
-                line += termcolor.colored('░', color)
-            else:
-                line += ' '
-        image_text_data.append(line)
+    watch.watch_video(text_frames)
 
-    with open(output_folder + image_path.stem + ".txt", 'w') as file:
-        for line in image_text_data:
-            file.write(line + '\n')
-
-print("Convertion Complete!")
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        logging.error("Hello my name is Error", exc_info=e, stack_info=True)
