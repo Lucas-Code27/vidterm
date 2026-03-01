@@ -1,6 +1,4 @@
-from PIL import Image
 import numpy
-import io
 import termcolor
 import queue
 import time
@@ -20,7 +18,7 @@ def frame_generator(path):
     cap.release()
 
 def produce_frames(frame_buffer):
-    performance_times = {}
+    #performance_times = {}
 
     frame_gen = frame_generator("video/video.mp4")
     image_frame_buffer = queue.Queue(maxsize=frame_buffer.maxsize)
@@ -39,28 +37,17 @@ def produce_frames(frame_buffer):
         
         image_sleep_time = time.time()
 
-        start_time = time.time()
+        #start_time = time.time()
 
         try:
             file_frame = next(frame_gen)
         except StopIteration:
             return
 
-        end_time = time.time()
-        performance_times["get_image"] = end_time - start_time
+        #end_time = time.time()
+        #performance_times["get_image"] = end_time - start_time
 
-        start_time = time.time()
-
-        encode_success, image = cv2.imencode(".png", file_frame)
-
-        if not encode_success:
-            raise Exception("Failed to encode frame")
-
-        frame = image.tobytes()
-        frame_bytes = io.BytesIO(frame)
-
-        picture = Image.open(frame_bytes)
-        picture = picture.convert("RGB")
+        #start_time = time.time()
 
         CHAR_SIZE_X = 1
         CHAR_SIZE_Y = 2
@@ -68,43 +55,52 @@ def produce_frames(frame_buffer):
         char_x = CHAR_SIZE_X * quantization_level
         char_y = CHAR_SIZE_Y * quantization_level
 
-        pixels_grid = numpy.array(picture)
+        pixels_grid = cv2.cvtColor(file_frame, cv2.COLOR_BGR2RGB)
 
         height = pixels_grid.shape[0]
         width = pixels_grid.shape[1]
 
+        h2 = (height // char_y) * char_y
+        w2 = (width // char_x) * char_x
+
+        cropped = pixels_grid[:h2, :w2]
+
+        blocks_y = h2 // char_y
+        blocks_x = w2 // char_x
+
+        reshaped = cropped.reshape(
+            blocks_y, char_y,
+            blocks_x, char_x,
+            3
+        )
+
+        avg_color = numpy.mean(reshaped, axis=(1, 3))
+
         image_text_data = ""
 
-        end_time = time.time()
+        #end_time = time.time()
 
-        performance_times["prepare_image"] = end_time - start_time
+        #performance_times["prepare_image"] = end_time - start_time
 
-        start_time = time.time()
+        #start_time = time.time()
 
-        # Loop over all pixels
-        for y in range(0, height, char_y):
-            line = ""
+        # Loop over all blocks
+        lines = []
 
-            for x in range(0, width, char_x):
-                pixel_chunk = pixels_grid[y : y + char_y, x : x + char_x]
+        for y in range(blocks_y):
+            chars = []
 
-                if pixel_chunk.size == 0:
-                    continue
+            for x in range(blocks_x):
+                red, green, blue = numpy.round(avg_color[y, x]).astype(numpy.uint8)
 
-                avg_color = numpy.mean(pixel_chunk, axis=(0, 1))
+                chars.append(termcolor.colored('█', (red, green, blue)))
 
-                if numpy.isnan(avg_color).any():
-                    continue
-
-                red, green, blue = numpy.round(avg_color).astype(numpy.ubyte)
-                color = (red, green, blue)
-
-                line += termcolor.colored('█', color)
-                
-            image_text_data += line + "\n"
+            lines.append("".join(chars) + "\n")
+        
+        image_text_data += "".join(lines)
         frame_buffer.put(image_text_data)
-        end_time = time.time()
+        #end_time = time.time()
 
-        performance_times["convert_image_to_text"] = end_time - start_time
+        #performance_times["convert_image_to_text"] = end_time - start_time
 
-        print("Buffer Performance: ", performance_times)
+        #print("Buffer Performance: ", performance_times)

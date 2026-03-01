@@ -12,7 +12,7 @@ def main():
 
     producer_thread = threading.Thread(target=producer.produce_frames, args=[frame_buffer])
     watch_thread = threading.Thread(target=watch.watch_video, args=[frame_buffer])
-
+    
     producer_thread.start()
     watch_thread.start()
 

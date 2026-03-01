@@ -4,7 +4,7 @@ import time
 import queue
 
 def watch_video(frame_buffer):
-    FPS = 12
+    FPS = 60
     FRAME_DELAY = 1.0 / FPS
 
     print("Loading...")
@@ -33,7 +33,8 @@ def watch_video(frame_buffer):
         render_end_time = time.time()
         render_time = render_end_time - render_start_time
 
-        print("Time to render frame: ", render_time)
+        print(f"Buffer: {frame_buffer.qsize()}/{frame_buffer.maxsize}")
+        #print("Time to render frame: ", render_time)
 
         sleep_time = max(0, FRAME_DELAY - render_time)
         if sleep_time > 0:
