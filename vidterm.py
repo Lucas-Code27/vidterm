@@ -28,7 +28,9 @@ def main():
                 return
     
     if not file_found:
-        print("You need to provide a path to the video file you want to play.")
+        print("You need to provide a path and the --path argument before it for the video file you want to play.")
+        print("Example usage: <python path> <vidterm path> --path <video path>")
+        print("pyinstaller version: <path to vidterm executable> --path <video path>")
         return
 
     video = cv2.VideoCapture(video_path)
