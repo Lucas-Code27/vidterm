@@ -9,6 +9,8 @@
 
 ## Planned Features
 - Audio
+- Playback controls (Pause/Resume)
+- Progress bar
 
 ## Dependencies
 - opencv-python
