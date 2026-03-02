@@ -8,7 +8,6 @@
 - Color
 
 ## Planned Features
-- Command line arguments (or a gui) for settings before starting
 - Audio
 
 ## Dependencies
