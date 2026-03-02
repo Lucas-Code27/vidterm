@@ -1,4 +1,4 @@
-# Terminal Video Player
+# Vidterm
 #### A simple video player for the terminal
 
 ## Features
