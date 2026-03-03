@@ -22,7 +22,6 @@ def main():
                 video_path = sys.argv[i + 1]
 
             if video_path == None:
-                print(len(sys.argv))
                 print(sys.argv[i + 1])
                 print("File not found")
                 return
@@ -39,13 +38,14 @@ def main():
         print("File given is not a valid video and could not be openned by OpenCV2 please try again or use a different file")
         return
 
+    frame_count = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
     video_fps = video.get(cv2.CAP_PROP_FPS)
     video.release()
 
     frame_buffer = queue.Queue(maxsize=BUFFER_SIZE)
 
     producer_thread = threading.Thread(target=producer.produce_frames, args=[frame_buffer, video_path])
-    watch_thread = threading.Thread(target=watch.watch_video, args=[frame_buffer, video_fps])
+    watch_thread = threading.Thread(target=watch.watch_video, args=[frame_buffer, video_fps, frame_count])
     
     producer_thread.start()
     watch_thread.start()

@@ -3,13 +3,17 @@ import sys
 import time
 import queue
 
-def watch_video(frame_buffer, video_fps):
+def watch_video(frame_buffer, video_fps, frame_count):
     FRAME_DELAY = 1.0 / video_fps
 
     print("Loading...")
 
-    while frame_buffer.qsize() < frame_buffer.maxsize / 2:
-        time.sleep(10 / 1000)
+    if frame_buffer.maxsize / 2 > frame_count:
+        while frame_buffer.qsize() < frame_count:
+            time.sleep(10 / 1000)
+    else:
+        while frame_buffer.qsize() < frame_buffer.maxsize / 2:
+            time.sleep(10 / 1000)
 
     #print("\033[?25l")
     os.system("clear")
