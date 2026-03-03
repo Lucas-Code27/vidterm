@@ -15,7 +15,7 @@ def load_config():
         print(f"Config loading had an error! {e}")
 
         new_config["quantization_level"] = 12
-        new_config["black_point"] = 16
+        new_config["black_point"] = 0
     
     return new_config
 
