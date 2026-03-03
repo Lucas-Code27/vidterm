@@ -1,4 +1,6 @@
 {
     "quantization_level": 12,
-    "black_point": 0
+    "black_point": 0,
+    "buffer_size": 100,
+    "pre_load_buffer": 20
 }

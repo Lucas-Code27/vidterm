@@ -7,8 +7,7 @@ import sys
 
 import watch
 import producer
-
-BUFFER_SIZE = 100
+import config
 
 def main():
     file_found = False
@@ -42,10 +41,13 @@ def main():
     video_fps = video.get(cv2.CAP_PROP_FPS)
     video.release()
 
-    frame_buffer = queue.Queue(maxsize=BUFFER_SIZE)
+    conf = config.get_config()
+
+    frame_buffer = queue.Queue(maxsize=conf["buffer_size"])
+    preload_buffer_amount = conf["pre_load_buffer"]
 
     producer_thread = threading.Thread(target=producer.produce_frames, args=[frame_buffer, video_path])
-    watch_thread = threading.Thread(target=watch.watch_video, args=[frame_buffer, video_fps, frame_count])
+    watch_thread = threading.Thread(target=watch.watch_video, args=[frame_buffer, video_fps, frame_count, preload_buffer_amount])
     
     producer_thread.start()
     watch_thread.start()
