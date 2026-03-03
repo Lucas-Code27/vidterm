@@ -3,8 +3,9 @@ import sys
 import time
 import queue
 
-def watch_video(frame_buffer, video_fps, frame_count, preload_buffer_amount):
-    FRAME_DELAY = 1.0 / video_fps
+def watch_video(frame_buffer, video_fps, frame_count, preload_buffer_amount, speed_scale):
+    adjusted_fps = video_fps * speed_scale
+    FRAME_DELAY = 1.0 / adjusted_fps
 
     print("Loading...")
 

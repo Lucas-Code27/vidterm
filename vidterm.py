@@ -12,6 +12,7 @@ import config
 def main():
     file_found = False
     video_path = None
+    speed_scale = 1.0
 
     for i in range(len(sys.argv) - 1):
         if sys.argv[i] == "--file":
@@ -24,6 +25,14 @@ def main():
                 print(sys.argv[i + 1])
                 print("File not found")
                 return
+        elif sys.argv[i] == "--speed":
+            if float(sys.argv[i + 1]):
+                speed_scale = float(sys.argv[i + 1])
+            else:
+                speed_scale = int(sys.argv[i + 1])
+
+            if speed_scale <= 0:
+                print("Speed cannot be less than 0. Defaulting to 1.0 speed")
     
     if not file_found:
         print("You need to provide a path and the --path argument before it for the video file you want to play.")
@@ -47,7 +56,7 @@ def main():
     preload_buffer_amount = conf["pre_load_buffer"]
 
     producer_thread = threading.Thread(target=producer.produce_frames, args=[frame_buffer, video_path])
-    watch_thread = threading.Thread(target=watch.watch_video, args=[frame_buffer, video_fps, frame_count, preload_buffer_amount])
+    watch_thread = threading.Thread(target=watch.watch_video, args=[frame_buffer, video_fps, frame_count, preload_buffer_amount, speed_scale])
     
     producer_thread.start()
     watch_thread.start()
