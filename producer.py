@@ -9,6 +9,8 @@ import config
 TIMEOUT = 15
 MAX_TIMEOUT = 2000
 
+RESET = "\033[0m"
+
 def frame_generator(path):
     cap = cv2.VideoCapture(filename=path)
     while cap.isOpened():
@@ -96,7 +98,8 @@ def produce_frames(frame_buffer, video_path):
                 color = (red, green, blue)
 
                 if red > black_point or green > black_point or blue > black_point:
-                    chars.append(termcolor.colored('█', color))
+                    text = termcolor.colored('█', color)
+                    chars.append(text[:-len(RESET)])
                 else:
                     chars.append(' ')
 

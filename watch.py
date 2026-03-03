@@ -29,8 +29,8 @@ def watch_video(frame_buffer, video_fps, frame_count):
 
         render_start_time = time.time()
 
-        sys.stdout.write("\033[0;0H")
-        sys.stdout.write(frame)
+        sys.stdout.write("\033[0;0H\u001b[40m")
+        sys.stdout.write(frame + "\033[0m")
         sys.stdout.flush()
 
         render_end_time = time.time()
