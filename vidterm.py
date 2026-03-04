@@ -55,8 +55,8 @@ def main():
     frame_buffer = queue.Queue(maxsize=conf["buffer_size"])
     preload_buffer_amount = conf["pre_load_buffer"]
 
-    producer_thread = threading.Thread(target=producer.produce_frames, args=[frame_buffer, video_path])
-    watch_thread = threading.Thread(target=watch.watch_video, args=[frame_buffer, video_fps, frame_count, preload_buffer_amount, speed_scale])
+    producer_thread = threading.Thread(target=producer.produce_frames, args=[frame_buffer, video_path], daemon=True)
+    watch_thread = threading.Thread(target=watch.watch_video, args=[frame_buffer, video_fps, frame_count, preload_buffer_amount, speed_scale], daemon=True)
     
     producer_thread.start()
     watch_thread.start()
