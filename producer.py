@@ -30,7 +30,6 @@ def produce_frames(frame_buffer, video_path):
 
     conf = config.get_config()
     quantization_level = conf["quantization_level"]
-    black_point = conf["black_point"]
 
     char_x = CHAR_SIZE_X * quantization_level
     char_y = CHAR_SIZE_Y * quantization_level
@@ -87,8 +86,6 @@ def produce_frames(frame_buffer, video_path):
 
         #start_time = time.time()
 
-        black_point_mask = numpy.any(avg_color > black_point, axis=-1)
-
         red = avg_color[:, :, 0]
         green = avg_color[:, :, 1]
         blue = avg_color[:, :, 2]
@@ -120,9 +117,7 @@ def produce_frames(frame_buffer, video_path):
             "m▀"
         )
 
-        chars_array = numpy.where(black_point_mask, chars, ' \u001b[0m')
-
-        lines_array = numpy.core.defchararray.add(chars_array, "")
+        lines_array = numpy.core.defchararray.add(chars, "")
         lines = ["".join(row) + "\n" for row in lines_array]
 
         frame_buffer.put("".join(lines))
