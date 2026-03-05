@@ -75,7 +75,11 @@ def produce_frames(frame_buffer, video_path):
             3
         )
 
-        avg_color = numpy.mean(reshaped, axis=(1, 3)).astype("uint8")
+        top_half = reshaped[:, :char_y // 2, :, :, :]
+        bottom_half = reshaped[:, char_y // 2:, :, :, :]
+
+        avg_color = numpy.mean(top_half, axis=(1, 3)).astype("uint8")
+        bottom_avg_color = numpy.mean(bottom_half, axis=(1, 3)).astype("uint8")
 
         #end_time = time.time()
 
@@ -89,18 +93,34 @@ def produce_frames(frame_buffer, video_path):
         green = avg_color[:, :, 1]
         blue = avg_color[:, :, 2]
 
+        bottom_red = bottom_avg_color[:, :, 0]
+        bottom_green = bottom_avg_color[:, :, 1]
+        bottom_blue = bottom_avg_color[:, :, 2]
+
         chars = numpy.core.defchararray.add(
             numpy.core.defchararray.add(
                 numpy.core.defchararray.add(
-                    numpy.core.defchararray.add("\033[38;2;", red.astype(str)),
-                    numpy.core.defchararray.add(";", green.astype(str))
+                    numpy.core.defchararray.add(
+                        numpy.core.defchararray.add(
+                            numpy.core.defchararray.add("\033[38;2;", red.astype(str)),
+                            numpy.core.defchararray.add(";", green.astype(str))
+                        ),
+                        numpy.core.defchararray.add(";", blue.astype(str))
+                    ),
+                    "m"
                 ),
-                numpy.core.defchararray.add(";", blue.astype(str))
+                numpy.core.defchararray.add(
+                    numpy.core.defchararray.add(
+                        numpy.core.defchararray.add("\033[48;2;", bottom_red.astype(str)),
+                        numpy.core.defchararray.add(";", bottom_green.astype(str))
+                    ),
+                    numpy.core.defchararray.add(";", bottom_blue.astype(str))
+                )
             ),
-            "m█"
+            "m▀"
         )
 
-        chars_array = numpy.where(black_point_mask, chars, ' ')
+        chars_array = numpy.where(black_point_mask, chars, ' \u001b[0m')
 
         lines_array = numpy.core.defchararray.add(chars_array, "")
         lines = ["".join(row) + "\n" for row in lines_array]
