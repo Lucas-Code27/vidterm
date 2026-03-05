@@ -41,8 +41,6 @@ def watch_video(frame_buffer, video_fps, frame_count, preload_buffer_amount, spe
         frame_width = max(len(ansi_escape.sub("", line)) for line in lines) if lines else 0
 
         padding = max(0, (term_width - frame_width) // 2)
-        print(padding)
-        print(term_width)
 
         padded_frame = "\n".join((" " * padding) + line + "\033[0m" for line in lines)
 
