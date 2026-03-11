@@ -1,14 +1,14 @@
-import os
-import sys
-import time
-import queue
-import re
+from os import system, get_terminal_size
+from sys import stdout, getsizeof
+from time import sleep, time
+from queue import Queue, Empty
+from re import compile
 
 def watch_video(frame_buffer, video_fps, frame_count, preload_buffer_amount, speed_scale):
     adjusted_fps = video_fps * speed_scale
     FRAME_DELAY = 1.0 / adjusted_fps
 
-    ansi_escape = re.compile(r'\033\[[0-9;]*m')
+    ansi_escape = compile(r'\033\[[0-9;]*m')
     last_width = 0
 
     played_frames = 0
@@ -17,26 +17,26 @@ def watch_video(frame_buffer, video_fps, frame_count, preload_buffer_amount, spe
 
     if preload_buffer_amount > frame_count:
         while frame_buffer.qsize() < frame_count:
-            time.sleep(10 / 1000)
+            sleep(10 / 1000)
     else:
         while frame_buffer.qsize() < preload_buffer_amount:
-            time.sleep(10 / 1000)
+            sleep(10 / 1000)
 
     #print("\033[?25l")
 
     while True:
         try:
             frame = frame_buffer.get(timeout=1)
-        except queue.Empty:
+        except Empty:
             return
         except Exception as e:
             print(e)
             return
 
         try:
-            term_width = os.get_terminal_size().columns
+            term_width = get_terminal_size().columns
             if term_width != last_width:
-                os.system("clear")
+                system("clear")
                 last_width = term_width
         except:
             term_width = 80
@@ -49,14 +49,14 @@ def watch_video(frame_buffer, video_fps, frame_count, preload_buffer_amount, spe
 
         padded_frame = "\n".join((" " * padding) + line + "\033[0m" for line in lines)
 
-        render_start_time = time.time()
+        render_start_time = time()
 
-        sys.stdout.write(f"\033[0;0H")
-        sys.stdout.write(padded_frame + "\033[0m")
+        stdout.write(f"\033[0;0H")
+        stdout.write(padded_frame + "\033[0m")
 
         played_frames += 1
 
-        render_end_time = time.time()
+        render_end_time = time()
         render_time = render_end_time - render_start_time
 
         played_ratio = played_frames / frame_count
@@ -65,26 +65,26 @@ def watch_video(frame_buffer, video_fps, frame_count, preload_buffer_amount, spe
         played_chars = int(played_ratio * frame_width)
         buffer_chars = int(buffered_ratio * frame_width)
 
-        sys.stdout.write("\n\n" + (" " * padding))
+        stdout.write("\n\n" + (" " * padding))
         for i in range(frame_width):
             if i < played_chars:
-                sys.stdout.write("█")
+                stdout.write("█")
             elif i < buffer_chars:
-                sys.stdout.write("▒")
+                stdout.write("▒")
             else:
-                sys.stdout.write("░")
-        sys.stdout.write("\n")
+                stdout.write("░")
+        stdout.write("\n")
 
-        sys.stdout.write("\n")
-        sys.stdout.write(f"Frame render time: {render_time:.6f}" + (" " * 12) + "\n")
-        sys.stdout.write(f"Frame Size: {round(sys.getsizeof(frame)/1000, 3)} kilobytes" + (" " * 12) + "\n")
-        sys.stdout.write(f"Buffer: {frame_buffer.qsize()}/{frame_buffer.maxsize}" + (" " * 12) + "\n")
+        stdout.write("\n")
+        stdout.write(f"Frame render time: {render_time:.6f}" + (" " * 12) + "\n")
+        stdout.write(f"Frame Size: {round(getsizeof(frame)/1000, 3)} kilobytes" + (" " * 12) + "\n")
+        stdout.write(f"Buffer: {frame_buffer.qsize()}/{frame_buffer.maxsize}" + (" " * 12) + "\n")
 
-        sys.stdout.flush()
+        stdout.flush()
 
         sleep_time = max(0, FRAME_DELAY - render_time)
         if sleep_time > 0:
-            time.sleep(sleep_time)
+            sleep(sleep_time)
 
     #print("\033[?25h")
-    #os.system("clear")
+    #system("clear")

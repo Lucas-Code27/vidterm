@@ -1,4 +1,4 @@
-import json
+from json import load
 
 config_ref = None
 
@@ -7,7 +7,7 @@ def load_config():
 
     try:
         with open('config/config.json', 'r') as f:
-            data = json.load(f)
+            data = load(f)
         
             new_config["quantization_level"] = data["quantization_level"]
             new_config["buffer_size"] = data["buffer_size"]

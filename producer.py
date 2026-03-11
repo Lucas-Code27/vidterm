@@ -1,13 +1,13 @@
-import numpy
-import numpy.core.defchararray
-import queue
-import time
-import cv2
+from numpy import any, where, mean, stack, roll, full
+from numpy.core import defchararray
+from queue import Queue
+from time import time, sleep
+from cv2 import VideoCapture, cvtColor, COLOR_BGR2RGB
 
-import config
+from config import get_config
 
 def frame_generator(path):
-    cap = cv2.VideoCapture(filename=path)
+    cap = VideoCapture(filename=path)
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret: break
@@ -26,11 +26,11 @@ def produce_frames(frame_buffer, video_path):
     CHAR_SIZE_Y = 2
 
     frame_gen = frame_generator(video_path)
-    image_frame_buffer = queue.Queue(maxsize=frame_buffer.maxsize)
+    image_frame_buffer = Queue(maxsize=frame_buffer.maxsize)
 
-    image_sleep_time = time.time()
+    image_sleep_time = time()
 
-    conf = config.get_config()
+    conf = get_config()
     quantization_level = conf["quantization_level"]
 
     char_x = CHAR_SIZE_X * quantization_level
@@ -38,26 +38,26 @@ def produce_frames(frame_buffer, video_path):
     
     while True:
         if image_frame_buffer.full():
-            if time.time() - image_sleep_time > MAX_TIMEOUT / 1000:
+            if time() - image_sleep_time > MAX_TIMEOUT / 1000:
                 raise Exception("YOU'RE TAKING TOO LONG")
 
-            time.sleep(TIMEOUT / 1000)
+            sleep(TIMEOUT / 1000)
         
-        image_sleep_time = time.time()
+        image_sleep_time = time()
 
-        start_time = time.time()
+        start_time = time()
 
         try:
             file_frame = next(frame_gen)
         except StopIteration:
             return
 
-        end_time = time.time()
+        end_time = time()
         performance_times["get_image"] = round(end_time - start_time, DEBUG_ROUND_DIGITS)
 
-        start_time = time.time()
+        start_time = time()
 
-        pixels_grid = cv2.cvtColor(file_frame, cv2.COLOR_BGR2RGB)
+        pixels_grid = cvtColor(file_frame, COLOR_BGR2RGB)
 
         height = pixels_grid.shape[0]
         width = pixels_grid.shape[1]
@@ -79,8 +79,8 @@ def produce_frames(frame_buffer, video_path):
         top_half = reshaped[:, :char_y // 2, :, :, :]
         bottom_half = reshaped[:, char_y // 2:, :, :, :]
 
-        avg_color = numpy.mean(top_half, axis=(1, 3)).astype("uint8")
-        bottom_avg_color = numpy.mean(bottom_half, axis=(1, 3)).astype("uint8")
+        avg_color = mean(top_half, axis=(1, 3)).astype("uint8")
+        bottom_avg_color = mean(bottom_half, axis=(1, 3)).astype("uint8")
 
         red = avg_color[:, :, 0]
         green = avg_color[:, :, 1]
@@ -90,56 +90,56 @@ def produce_frames(frame_buffer, video_path):
         bottom_green = bottom_avg_color[:, :, 1]
         bottom_blue = bottom_avg_color[:, :, 2]
 
-        fg = numpy.stack((red, green, blue), axis=2)
-        bg = numpy.stack((bottom_red, bottom_green, bottom_blue), axis=2)
+        fg = stack((red, green, blue), axis=2)
+        bg = stack((bottom_red, bottom_green, bottom_blue), axis=2)
 
-        fg_prev = numpy.roll(fg, 1, axis=1)
-        bg_prev = numpy.roll(bg, 1, axis=1)
+        fg_prev = roll(fg, 1, axis=1)
+        bg_prev = roll(bg, 1, axis=1)
 
         fg_prev[:, 0] = 255
         bg_prev[:, 0] = 255
 
-        change_mask = numpy.any(fg != fg_prev, axis=2) | numpy.any(bg != bg_prev, axis=2)
+        change_mask = any(fg != fg_prev, axis=2) | any(bg != bg_prev, axis=2)
 
-        end_time = time.time()
+        end_time = time()
 
         performance_times["prepare_image"] = round(end_time - start_time, DEBUG_ROUND_DIGITS)
 
-        start_time = time.time()
+        start_time = time()
 
-        colors = numpy.core.defchararray.add(
-            numpy.core.defchararray.add(
-                numpy.core.defchararray.add(
-                    numpy.core.defchararray.add(
-                        numpy.core.defchararray.add(
-                            numpy.core.defchararray.add("\033[38;2;", red.astype(str)),
-                            numpy.core.defchararray.add(";", green.astype(str))
+        colors = defchararray.add(
+            defchararray.add(
+                defchararray.add(
+                    defchararray.add(
+                        defchararray.add(
+                            defchararray.add("\033[38;2;", red.astype(str)),
+                            defchararray.add(";", green.astype(str))
                         ),
-                        numpy.core.defchararray.add(";", blue.astype(str))
+                        defchararray.add(";", blue.astype(str))
                     ),
                     "m"
                 ),
-                numpy.core.defchararray.add(
-                    numpy.core.defchararray.add(
-                        numpy.core.defchararray.add("\033[48;2;", bottom_red.astype(str)),
-                        numpy.core.defchararray.add(";", bottom_green.astype(str))
+                defchararray.add(
+                    defchararray.add(
+                        defchararray.add("\033[48;2;", bottom_red.astype(str)),
+                        defchararray.add(";", bottom_green.astype(str))
                     ),
-                    numpy.core.defchararray.add(";", bottom_blue.astype(str))
+                    defchararray.add(";", bottom_blue.astype(str))
                 )
             ),
             "m"
         )
 
-        chars = numpy.full(red.shape, "▀", dtype="<U32")
+        chars = full(red.shape, "▀", dtype="<U32")
 
-        chars = numpy.where(change_mask, numpy.core.defchararray.add(colors, chars), chars)
+        chars = where(change_mask, defchararray.add(colors, chars), chars)
 
-        end_time = time.time()
+        end_time = time()
 
         performance_times["convert_image_to_text"] = round(end_time - start_time, DEBUG_ROUND_DIGITS)
         performance_times["total"] = round(performance_times["convert_image_to_text"] + performance_times["get_image"] + performance_times["prepare_image"], DEBUG_ROUND_DIGITS)
 
-        lines_array = numpy.core.defchararray.add(chars, "")
+        lines_array = defchararray.add(chars, "")
         lines = ["".join(row) + "\n" for row in lines_array]
         lines.append(f"Buffer Times: {performance_times}")
 
