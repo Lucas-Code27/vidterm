@@ -40,7 +40,7 @@ def main():
         print("pyinstaller version: <path to vidterm executable> --path <video path>")
         return
 
-    video = cv2.VideoCapture(video_path)
+    video = cv2.VideoCapture(video_path) # type: ignore
 
     if not video.isOpened():
         print("File given is not a valid video and could not be openned by OpenCV2 please try again or use a different file")

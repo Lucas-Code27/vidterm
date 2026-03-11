@@ -75,6 +75,8 @@ def watch_video(frame_buffer, video_fps, frame_count, preload_buffer_amount, spe
                 sys.stdout.write("░")
         sys.stdout.write("\n")
 
+        #sys.stdout.write(f"{sys.getsizeof(frame)}\n") # frame data size check
+
         sys.stdout.flush()
 
         #print("\n" + (" " * padding) + f"Buffer: {frame_buffer.qsize()}/{frame_buffer.maxsize}      ")

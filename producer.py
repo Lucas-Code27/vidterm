@@ -94,7 +94,18 @@ def produce_frames(frame_buffer, video_path):
         bottom_green = bottom_avg_color[:, :, 1]
         bottom_blue = bottom_avg_color[:, :, 2]
 
-        chars = numpy.core.defchararray.add(
+        fg = numpy.stack((red, green, blue), axis=2)
+        bg = numpy.stack((bottom_red, bottom_green, bottom_blue), axis=2)
+
+        fg_prev = numpy.roll(fg, 1, axis=1)
+        bg_prev = numpy.roll(bg, 1, axis=1)
+
+        fg_prev[:, 0] = 255
+        bg_prev[:, 0] = 255
+
+        change_mask = numpy.any(fg != fg_prev, axis=2) | numpy.any(bg != bg_prev, axis=2)
+
+        colors = numpy.core.defchararray.add(
             numpy.core.defchararray.add(
                 numpy.core.defchararray.add(
                     numpy.core.defchararray.add(
@@ -114,8 +125,12 @@ def produce_frames(frame_buffer, video_path):
                     numpy.core.defchararray.add(";", bottom_blue.astype(str))
                 )
             ),
-            "m▀"
+            "m"
         )
+
+        chars = numpy.full(red.shape, "▀", dtype="<U32")
+
+        chars = numpy.where(change_mask, numpy.core.defchararray.add(colors, chars), chars)
 
         lines_array = numpy.core.defchararray.add(chars, "")
         lines = ["".join(row) + "\n" for row in lines_array]
