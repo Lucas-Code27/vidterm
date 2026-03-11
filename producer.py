@@ -1,9 +1,8 @@
-from numpy import any, where, set_printoptions, roll, full
+from numpy import any, where, roll, full
 from numpy.core import defchararray
 from queue import Queue
 from time import time, sleep
-from cv2 import VideoCapture, cvtColor, COLOR_BGR2RGB
-from sys import maxsize
+from cv2 import VideoCapture
 
 from config import get_config
 
@@ -16,7 +15,6 @@ def frame_generator(path):
     cap.release()
 
 def produce_frames(frame_buffer, video_path):
-    set_printoptions(threshold=maxsize)
     performance_times = {}
 
     TIMEOUT = 15
