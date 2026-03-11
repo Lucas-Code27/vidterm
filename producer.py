@@ -132,6 +132,6 @@ def produce_frames(frame_buffer, video_path, debug):
         lines = ["".join(row) + "\n" for row in lines_array]
 
         if debug:
-            lines.append(f"Buffer Times: {performance_times}")
+            lines.append(f"Buffer Times: {performance_times}    ")
 
         frame_buffer.put("".join(lines))
