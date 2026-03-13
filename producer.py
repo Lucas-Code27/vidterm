@@ -6,7 +6,7 @@ import ffmpeg
 
 from config import get_config
 
-def frame_generator(path):
+def frame_generator(path, quant):
     try:
         probe = ffmpeg.probe(path)
         video_stream = next((s for s in probe['streams'] if s['codec_type'] == 'video'), None)
@@ -20,19 +20,26 @@ def frame_generator(path):
         print(e.stderr.decode('utf8'))
         return
 
+    target_width = width // quant
+    target_height = height // quant
+
+    target_width = (target_width // 2) * 2
+    target_height = (target_height // 2) * 2
+
     process = (
         ffmpeg
         .input(path)
+        .filter("scale", target_width, target_height)
         .output('pipe:', format='rawvideo', pix_fmt='rgb24')
         .run_async(pipe_stdout=True, quiet=True)
     )
 
     while True:
-        in_bytes = process.stdout.read(width * height * 3)
+        in_bytes = process.stdout.read(target_width * target_height * 3)
         if not in_bytes:
             break
         
-        frame = frombuffer(in_bytes, "uint8").reshape([height, width, 3])
+        frame = frombuffer(in_bytes, "uint8").reshape([target_height, target_width, 3])
         yield frame
 
     process.stdout.close()
@@ -52,13 +59,13 @@ def produce_frames(frame_buffer, video_path, debug):
     CHAR_SIZE_X = 1
     CHAR_SIZE_Y = 2
 
-    frame_gen = frame_generator(video_path)
+    conf = get_config()
+    quantization_level = conf["quantization_level"]
+
+    frame_gen = frame_generator(video_path, quantization_level)
     image_frame_buffer = Queue(maxsize=frame_buffer.maxsize)
 
     image_sleep_time = time()
-
-    conf = get_config()
-    quantization_level = conf["quantization_level"]
 
     char_x = CHAR_SIZE_X * quantization_level
     char_y = CHAR_SIZE_Y * quantization_level
