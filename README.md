@@ -3,7 +3,7 @@
 
 ## Features
 - Multi-Threaded buffering and rendering
-- Supports any video format that OpenCV2 supports
+- Supports any video format that ffmpeg supports
 - Color
 
 ## Planned Features
@@ -13,7 +13,7 @@
 
 ## Dependencies
 - numpy
-- opencv-python
+- ffmpeg-python
 
 # How to use
 

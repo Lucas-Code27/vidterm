@@ -1,21 +1,48 @@
-from numpy import any, where, roll, full
+from numpy import any, where, roll, full, frombuffer, array_equal
 from numpy.core import defchararray
 from queue import Queue
 from time import time, sleep
-from cv2 import VideoCapture
+import ffmpeg
 
 from config import get_config
 
 def frame_generator(path):
-    cap = VideoCapture(filename=path)
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret: break
+    try:
+        probe = ffmpeg.probe(path)
+        video_stream = next((s for s in probe['streams'] if s['codec_type'] == 'video'), None)
+
+        if video_stream is None:
+            raise Exception("No Video Stream Found")
+
+        width = int(video_stream['width'])
+        height = int(video_stream['height'])
+    except ffmpeg.Error as e:
+        print(e.stderr.decode('utf8'))
+        return
+
+    process = (
+        ffmpeg
+        .input(path)
+        .output('pipe:', format='rawvideo', pix_fmt='rgb24')
+        .run_async(pipe_stdout=True, quiet=True)
+    )
+
+    while True:
+        in_bytes = process.stdout.read(width * height * 3)
+        if not in_bytes:
+            break
+        
+        frame = frombuffer(in_bytes, "uint8").reshape([height, width, 3])
         yield frame
-    cap.release()
+
+    process.stdout.close()
+    process.wait()
 
 def produce_frames(frame_buffer, video_path, debug):
     performance_times = {}
+
+    last_frame_image = []
+    last_frame_text = ""
 
     TIMEOUT = 15
     MAX_TIMEOUT = 2000
@@ -74,6 +101,12 @@ def produce_frames(frame_buffer, video_path, debug):
             3
         )
 
+        if array_equal(reshaped, last_frame_image):
+            frame_buffer.put(last_frame_text)
+            continue
+            
+        last_frame_image = reshaped
+
         half = char_y // 2
 
         top_half = reshaped[:, :half].mean(axis=(1, 3)).astype("uint8")
@@ -100,19 +133,19 @@ def produce_frames(frame_buffer, video_path, debug):
                 defchararray.add(
                     defchararray.add(
                         defchararray.add(
-                            defchararray.add("\033[38;2;", fg[:, :, 2].astype(str)),
+                            defchararray.add("\033[38;2;", fg[:, :, 0].astype(str)),
                             defchararray.add(";", fg[:, :, 1].astype(str))
                         ),
-                        defchararray.add(";", fg[:, :, 0].astype(str))
+                        defchararray.add(";", fg[:, :, 2].astype(str))
                     ),
                     "m"
                 ),
                 defchararray.add(
                     defchararray.add(
-                        defchararray.add("\033[48;2;", bg[:, :, 2].astype(str)),
+                        defchararray.add("\033[48;2;", bg[:, :, 0].astype(str)),
                         defchararray.add(";", bg[:, :, 1].astype(str))
                     ),
-                    defchararray.add(";", bg[:, :, 0].astype(str))
+                    defchararray.add(";", bg[:, :, 2].astype(str))
                 )
             ),
             "m"
@@ -135,3 +168,8 @@ def produce_frames(frame_buffer, video_path, debug):
             lines.append(f"Buffer Times: {performance_times}    ")
 
         frame_buffer.put("".join(lines))
+
+        if debug:
+            lines[-1] = f"COPIED FRAME, Frame Fetch Time: {performance_times['get_image']}" + (" " * len(str(performance_times)))
+
+        last_frame_text = "".join(lines)

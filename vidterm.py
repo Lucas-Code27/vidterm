@@ -1,9 +1,9 @@
 from pathlib import Path
-from cv2 import VideoCapture, CAP_PROP_FPS, CAP_PROP_FRAME_COUNT
 from logging import error
 from queue import Queue
 from threading import Thread
-from sys import argv
+from sys import argv, exit
+import ffmpeg
 
 from watch import watch_video
 from producer import produce_frames
@@ -43,15 +43,42 @@ def main():
         print("pyinstaller version: <path to vidterm executable> --path <video path>")
         return
 
-    video = VideoCapture(video_path) # type: ignore
+    try:
+        probe = ffmpeg.probe(video_path)
+        stream = next((s for s in probe['streams'] if s['codec_type'] == 'video'), None)
 
-    if not video.isOpened():
-        print("File given is not a valid video and could not be openned by OpenCV2 please try again or use a different file")
-        return
+        if stream is None:
+            print("Failed to laod video stream")
+            exit(1)
+        
+        fps_str = stream.get("avg_frame_rate", "0/1")
+        try:
+            video_fps = eval(fps_str)
+        except ZeroDivisionError:
+            print("fps was divided by zero")
+            exit(1)
+        
+        if video_fps == 0:
+            print("video fps detected as 0 aborting")
+            exit(1)
 
-    frame_count = int(video.get(CAP_PROP_FRAME_COUNT))
-    video_fps = video.get(CAP_PROP_FPS)
-    video.release()
+        frame_count = int(stream.get("nb_frames", 0))
+
+        if frame_count == 0:
+            duration = float(stream.get("duration", 0))
+
+            if duration == 0:
+                print("Video is so short it doesn't exist")
+                exit(1)
+
+            frame_count = int(duration * video_fps)
+    except ffmpeg.Error:
+        print("Failed to load video metadata")
+        exit(1)
+
+    if frame_count == 0:
+        print("Failed to get a proper frame count")
+        exit(1)
 
     conf = get_config()
 
@@ -70,12 +97,14 @@ def main():
         watch_thread.join()
     except KeyboardInterrupt:
         print("\033[?25h")
-        exit()
+        exit(1)
     finally:
         print("\033[?25h")
+        exit(0)
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
         error("Hello my name is Error", exc_info=e, stack_info=True)
+        exit(1)
