@@ -1,4 +1,4 @@
-from numpy import any, where, roll, full, frombuffer
+from numpy import any, where, roll, full, frombuffer, array_equal
 from numpy.core import defchararray
 from queue import Queue
 from time import time, sleep
@@ -40,6 +40,9 @@ def frame_generator(path):
 
 def produce_frames(frame_buffer, video_path, debug):
     performance_times = {}
+
+    last_frame_image = []
+    last_frame_text = ""
 
     TIMEOUT = 15
     MAX_TIMEOUT = 2000
@@ -97,6 +100,12 @@ def produce_frames(frame_buffer, video_path, debug):
             blocks_x, char_x,
             3
         )
+
+        if array_equal(reshaped, last_frame_image):
+            frame_buffer.put(last_frame_text)
+            continue
+        else:
+            last_frame_image = reshaped
 
         half = char_y // 2
 
@@ -159,3 +168,4 @@ def produce_frames(frame_buffer, video_path, debug):
             lines.append(f"Buffer Times: {performance_times}    ")
 
         frame_buffer.put("".join(lines))
+        last_frame_text = "".join(lines)
