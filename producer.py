@@ -6,7 +6,7 @@ import ffmpeg
 
 from config import get_config
 
-def frame_generator(path, quant):
+def frame_generator(path, quant, mode):
     try:
         probe = ffmpeg.probe(path)
         video_stream = next((s for s in probe['streams'] if s['codec_type'] == 'video'), None)
@@ -26,26 +26,95 @@ def frame_generator(path, quant):
     target_width = (target_width // 2) * 2
     target_height = (target_height // 2) * 2
 
-    process = (
-        ffmpeg
-        .input(path)
-        .filter("scale", target_width, target_height)
-        .output('pipe:', format='rawvideo', pix_fmt='rgb24')
-        .run_async(pipe_stdout=True, quiet=True)
-    )
+    if mode == "gs":
+        process = (
+            ffmpeg
+            .input(path)
+            .filter("scale", target_width, target_height)
+            .output('pipe:', format='rawvideo', pix_fmt='gray8')
+            .run_async(pipe_stdout=True, quiet=True)
+        )
+    else:
+        process = (
+            ffmpeg
+            .input(path)
+            .filter("scale", target_width, target_height)
+            .output('pipe:', format='rawvideo', pix_fmt='rgb24')
+            .run_async(pipe_stdout=True, quiet=True)
+        )
 
     while True:
-        in_bytes = process.stdout.read(target_width * target_height * 3)
+        if mode == "gs":
+            in_bytes = process.stdout.read(target_width * target_height * 1)
+        else:
+            in_bytes = process.stdout.read(target_width * target_height * 3)
+
         if not in_bytes:
             break
         
-        frame = frombuffer(in_bytes, "uint8").reshape([target_height, target_width, 3])
+        if mode == "gs":
+            frame = frombuffer(in_bytes, "uint8").reshape([target_height, target_width, 1])
+        else:
+            frame = frombuffer(in_bytes, "uint8").reshape([target_height, target_width, 3])
         yield frame
 
     process.stdout.close()
     process.wait()
 
-def produce_frames(frame_buffer, video_path, debug):
+def build_frame(fg, bg, change_mask):
+    colors = defchararray.add(
+                defchararray.add(
+                    defchararray.add(
+                        defchararray.add(
+                            defchararray.add(
+                                defchararray.add("\033[38;2;", fg[:, :, 0].astype(str)),
+                                defchararray.add(";", fg[:, :, 1].astype(str))
+                            ),
+                            defchararray.add(";", fg[:, :, 2].astype(str))
+                        ),
+                        "m"
+                    ),
+                    defchararray.add(
+                        defchararray.add(
+                            defchararray.add("\033[48;2;", bg[:, :, 0].astype(str)),
+                            defchararray.add(";", bg[:, :, 1].astype(str))
+                        ),
+                        defchararray.add(";", bg[:, :, 2].astype(str))
+                    )
+                ),
+                "m"
+            )
+
+    chars = full(fg[:, :, 0].shape, "▀", dtype="<U32")
+
+    chars = where(change_mask, defchararray.add(colors, chars), chars)
+    return chars
+
+def build_frame_greyscale(width, height, fg, bg):
+    chars = []
+
+    for y in range(height):
+        line = []
+
+        for x in range(width):
+            i = (fg[y, x, 0] + bg[y, x, 0]) / 2
+
+            if i > 200:
+                line.append("█")
+            elif i > 150:
+                line.append("▓")
+            elif i > 100:
+                line.append("▒")
+            elif i > 50:
+                line.append("░")
+            else:
+                line.append(" ")
+        
+        chars.append("".join(line))
+    
+    return chars
+
+def produce_frames(frame_buffer, video_path, debug, color_mode):
     performance_times = {}
 
     last_frame_image = []
@@ -62,7 +131,7 @@ def produce_frames(frame_buffer, video_path, debug):
     conf = get_config()
     quantization_level = conf["quantization_level"]
 
-    frame_gen = frame_generator(video_path, quantization_level)
+    frame_gen = frame_generator(video_path, quantization_level, color_mode)
     image_frame_buffer = Queue(maxsize=frame_buffer.maxsize)
 
     image_sleep_time = time()
@@ -102,11 +171,18 @@ def produce_frames(frame_buffer, video_path, debug):
         blocks_y = h2 // char_y
         blocks_x = w2 // char_x
 
-        reshaped = cropped.reshape(
-            blocks_y, char_y,
-            blocks_x, char_x,
-            3
-        )
+        if color_mode == "gs":
+            reshaped = cropped.reshape(
+                blocks_y, char_y,
+                blocks_x, char_x,
+                1
+            )
+        else:
+            reshaped = cropped.reshape(
+                blocks_y, char_y,
+                blocks_x, char_x,
+                3
+            )
 
         if array_equal(reshaped, last_frame_image):
             frame_buffer.put(DUPLICATE_FRAME_TEXT)
@@ -135,32 +211,10 @@ def produce_frames(frame_buffer, video_path, debug):
             performance_times["prepare_image"] = round(end_time - start_time, DEBUG_ROUND_DIGITS)
             start_time = time()
 
-        colors = defchararray.add(
-            defchararray.add(
-                defchararray.add(
-                    defchararray.add(
-                        defchararray.add(
-                            defchararray.add("\033[38;2;", fg[:, :, 0].astype(str)),
-                            defchararray.add(";", fg[:, :, 1].astype(str))
-                        ),
-                        defchararray.add(";", fg[:, :, 2].astype(str))
-                    ),
-                    "m"
-                ),
-                defchararray.add(
-                    defchararray.add(
-                        defchararray.add("\033[48;2;", bg[:, :, 0].astype(str)),
-                        defchararray.add(";", bg[:, :, 1].astype(str))
-                    ),
-                    defchararray.add(";", bg[:, :, 2].astype(str))
-                )
-            ),
-            "m"
-        )
-
-        chars = full(fg[:, :, 2].shape, "▀", dtype="<U32")
-
-        chars = where(change_mask, defchararray.add(colors, chars), chars)
+        if color_mode == "gs":
+            chars = build_frame_greyscale(blocks_x, blocks_y, fg.astype(int), bg.astype(int))
+        else:
+            chars = build_frame(fg, bg, change_mask)
 
         end_time = time()
 
@@ -168,7 +222,7 @@ def produce_frames(frame_buffer, video_path, debug):
             performance_times["convert_image_to_text"] = round(end_time - start_time, DEBUG_ROUND_DIGITS)
             performance_times["total"] = round(performance_times["convert_image_to_text"] + performance_times["get_image"] + performance_times["prepare_image"], DEBUG_ROUND_DIGITS)
 
-        lines_array = defchararray.add(chars, "")
+        lines_array = chars
         lines = ["".join(row) + "\n" for row in lines_array]
 
         if debug:
@@ -178,5 +232,3 @@ def produce_frames(frame_buffer, video_path, debug):
 
         if debug:
             lines[-1] = f"COPIED FRAME, Frame Fetch Time: {performance_times['get_image']}" + (" " * len(str(performance_times)))
-
-        last_frame_text = "".join(lines)

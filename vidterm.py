@@ -14,6 +14,7 @@ def main():
     video_path = None
     speed_scale = 1.0
     debug = False
+    video_mode = "truecolor"
 
     for i in range(len(argv)):
         if argv[i] == "--path":
@@ -36,6 +37,8 @@ def main():
                 print("Speed cannot be less than 0. Defaulting to 1.0 speed")
         elif argv[i] == "--debug":
             debug = True
+        elif argv[i] == "--no-color":
+            video_mode = "gs"
     
     if not file_found:
         print("You need to provide a path and the --path argument before it for the video file you want to play.")
@@ -82,10 +85,14 @@ def main():
 
     conf = get_config()
 
+    if video_mode != "gs" and video_mode != "truecolor":
+        print("Unknown color mode")
+        exit(1)
+
     frame_buffer: Queue[str] = Queue(maxsize=conf["buffer_size"])
     preload_buffer_amount = conf["pre_load_buffer"]
 
-    producer_thread = Thread(target=produce_frames, args=[frame_buffer, video_path, debug], daemon=True)
+    producer_thread = Thread(target=produce_frames, args=[frame_buffer, video_path, debug, video_mode], daemon=True)
     watch_thread = Thread(target=watch_video, args=[frame_buffer, video_fps, frame_count, preload_buffer_amount, speed_scale, debug], daemon=True)
     
     try:
