@@ -14,7 +14,6 @@
 ## Dependencies
 - numpy
 - ffmpeg-python
-- numba
 
 # How to use
 
