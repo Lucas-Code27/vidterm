@@ -2,7 +2,6 @@ from numpy import any, where, roll, full, frombuffer, array_equal
 from numpy.core import defchararray
 from queue import Queue
 from time import time, sleep
-from numba import njit
 import ffmpeg
 
 from config import get_config
@@ -91,7 +90,6 @@ def build_frame(fg, bg, change_mask):
     chars = where(change_mask, defchararray.add(colors, chars), chars)
     return chars
 
-@njit
 def build_frame_greyscale(width, height, fg, bg):
     chars = []
 
