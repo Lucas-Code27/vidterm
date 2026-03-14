@@ -1,12 +1,15 @@
 from os import system, get_terminal_size
 from sys import stdout, getsizeof
-from time import sleep, time
-from queue import Queue, Empty
+from time import sleep, time, gmtime, strftime
+from queue import Empty
 from re import compile
 
 def watch_video(frame_buffer, video_fps, frame_count, preload_buffer_amount, speed_scale, debug):
     adjusted_fps = video_fps * speed_scale
     FRAME_DELAY = 1.0 / adjusted_fps
+
+    video_length = frame_count / video_fps
+    video_length = strftime("%H:%M:%S", gmtime(video_length))
 
     ansi_escape = compile(r'\033\[[0-9;]*m')
     last_width = 0
@@ -54,6 +57,8 @@ def watch_video(frame_buffer, video_fps, frame_count, preload_buffer_amount, spe
 
         padded_frame = "\n".join((" " * padding) + line + "\033[0m" for line in lines)
 
+        playing_time = strftime("%H:%M:%S", gmtime(played_frames / video_fps))
+
         if frame == "DUPE":
             render_start_time = time()
 
@@ -79,6 +84,9 @@ def watch_video(frame_buffer, video_fps, frame_count, preload_buffer_amount, spe
                     stdout.write("▒")
                 else:
                     stdout.write("░")
+            stdout.write("\n")
+
+            stdout.write((" " * last_padding) + f"{playing_time} / {video_length} ({round((played_frames / frame_count) * 100, 2)}%)           ")
             stdout.write("\n")
 
             if debug:
@@ -124,6 +132,9 @@ def watch_video(frame_buffer, video_fps, frame_count, preload_buffer_amount, spe
                 stdout.write("▒")
             else:
                 stdout.write("░")
+        stdout.write("\n")
+
+        stdout.write((" " * last_padding) + f"{playing_time} / {video_length} ({round((played_frames / frame_count) * 100, 2)}%)           ")
         stdout.write("\n")
 
         if debug:
