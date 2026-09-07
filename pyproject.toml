@@ -7,7 +7,10 @@ authors = [
     { name = "Lucas-Code27", email = "83315414+Lucas-Code27@users.noreply.github.com" }
 ]
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "ffmpeg-python>=0.2.0",
+    "numpy>=2.5.3",
+]
 
 [project.scripts]
 vidterm = "vidterm.main:main"
