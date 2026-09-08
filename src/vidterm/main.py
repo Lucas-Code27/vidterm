@@ -1,4 +1,5 @@
 import sys
+import time
 from pathlib import Path
 from typing import Generator
 
@@ -56,6 +57,9 @@ def main() -> None:
     if video_stream is None:
         raise ValueError("No video stream found in the file")
 
+    # Get per frame time delay
+    frame_delay = 1 / int(video_stream["avg_frame_rate"].split("/")[0])
+
     # Get video size info
     width = int(video_stream["width"])
     height = int(video_stream["height"])
@@ -65,8 +69,7 @@ def main() -> None:
 
     try:
         for frame_idx, frame in enumerate(stream_frames(str(file_path), width, height)):
-            if frame_idx >= 1:
-                break
+            print("\033[0:0H", end="")
 
             lines = []
             for row in frame[::2]:
@@ -75,7 +78,8 @@ def main() -> None:
                     line += char_list[pixel // char_step]
                 lines.append(line)
 
-            print("\n".join(lines))
+            print("\n".join(lines), end="")
+            time.sleep(frame_delay)
                     
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
